@@ -17,6 +17,9 @@ const client = new MongoClient(uri, {
 });
 
 const server = createServer((req, res) => {
+  res.setHeader("Access-Control-Allow-Origin", "*"); // Allow all origins
+  res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
   // connect to MongoDB
 
   if (req.method === "POST") {
@@ -29,20 +32,36 @@ const server = createServer((req, res) => {
     req.on("end", () => {
       console.log("body", body);
       const parsedBody = JSON.parse(body);
-      run(parsedBody).catch(console.dir);
+      createMessage(parsedBody).catch(console.dir);
+
+      // run(parsedBody).then((result) => {
+      //   console.log("result", result);
+      // });
     });
+  } else if (req.method === "GET") {
+    getAllMessages()
+      .then((documents) => {
+        res.statusCode = 200;
+        res.setHeader("Content-Type", "application/json");
+        res.end(JSON.stringify(documents));
+      })
+      .catch((error) => {
+        console.error(error);
+        res.statusCode = 500;
+        res.end("Error fetching data");
+      });
   }
 
   res.statusCode = 201;
   res.setHeader("Content-Type", "text/plain");
-  res.end("Hello World");
+  // res.end("Hello World");
 });
 
 server.listen(port, hostname, () => {
   console.log(`Server running at http://${hostname}:${port}/`);
 });
 
-async function run(parsedBody) {
+async function createMessage(parsedBody) {
   try {
     // Connect the client to the server
     await client.connect();
@@ -54,6 +73,19 @@ async function run(parsedBody) {
     console.log("result object", result);
   } finally {
     // Ensures that the client will close when you finish/error
+    await client.close();
+  }
+}
+
+async function getAllMessages() {
+  try {
+    await client.connect();
+    const myDB = client.db("myDB");
+    const myColl = myDB.collection("pizzaMenu");
+
+    const documents = await myColl.find({}).toArray();
+    return documents;
+  } finally {
     await client.close();
   }
 }
