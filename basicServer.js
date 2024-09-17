@@ -18,8 +18,22 @@ const client = new MongoClient(uri, {
 
 const server = createServer((req, res) => {
   // connect to MongoDB
-  run().catch(console.dir);
-  res.statusCode = 200;
+
+  if (req.method === "POST") {
+    let body = "";
+
+    req.on("data", (chunk) => {
+      body += chunk.toString();
+    });
+
+    req.on("end", () => {
+      console.log("body", body);
+      const parsedBody = JSON.parse(body);
+      run(parsedBody).catch(console.dir);
+    });
+  }
+
+  res.statusCode = 201;
   res.setHeader("Content-Type", "text/plain");
   res.end("Hello World");
 });
@@ -28,14 +42,14 @@ server.listen(port, hostname, () => {
   console.log(`Server running at http://${hostname}:${port}/`);
 });
 
-async function run() {
+async function run(parsedBody) {
   try {
     // Connect the client to the server
     await client.connect();
     const myDB = client.db("myDB");
     const myColl = myDB.collection("pizzaMenu");
-    const doc = { name: "Neapolitan pizza", shape: "round" };
-    const result = await myColl.insertOne(doc);
+
+    const result = await myColl.insertOne(parsedBody);
     console.log(`A document was inserted with the _id: ${result.insertedId}`);
     console.log("result object", result);
   } finally {
